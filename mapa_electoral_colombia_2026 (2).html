@@ -1,0 +1,935 @@
+<html lang="es"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa Electoral Colombia 2026 — Primera Vuelta</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+  :root {
+    --right: #c0392b; --right-light: #e8847a; --right-dark: #7b1111;
+    --left: #1a5276;  --left-light: #5dade2;  --left-dark: #0b3050;
+    --bg: #0a0c0f; --surface: #111318; --border: #252830;
+    --text: #e8e9eb; --muted: #7a7f8a; --accent: #f0c040;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+  header { padding:2rem 2.5rem 1.2rem; border-bottom:1px solid var(--border); position:relative; }
+  header::before { content:''; position:absolute; top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,var(--right) 0%,var(--right) 44%,var(--accent) 44%,var(--accent) 56%,var(--left) 56%); }
+  .flag-stripe{display:flex;height:5px;width:100px;margin-bottom:.6rem;border-radius:2px;overflow:hidden;}
+  .flag-stripe span{flex:1;}
+  .flag-stripe span:nth-child(1){background:#fcd116;}
+  .flag-stripe span:nth-child(2){background:#003893;}
+  .flag-stripe span:nth-child(3){background:#ce1126;}
+  h1{font-family:'Playfair Display',serif;font-size:clamp(1.2rem,2.5vw,2rem);font-weight:900;letter-spacing:-.02em;line-height:1.1;}
+  .subtitle{font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:.3rem;}
+
+  .national-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:.8rem 2.5rem;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;}
+  .cand-total{display:flex;align-items:center;gap:.6rem;}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .cand-name{font-size:.72rem;font-weight:600;letter-spacing:.04em;}
+  .cand-pct{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;}
+  .cand-votes{font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:var(--muted);}
+  .bar-track{flex:1;min-width:180px;height:7px;background:var(--border);border-radius:4px;overflow:hidden;position:relative;}
+  .bar-fill-right{position:absolute;left:0;top:0;height:100%;background:var(--right);width:43.74%;}
+  .bar-fill-left{position:absolute;right:0;top:0;height:100%;background:var(--left);width:40.9%;}
+  .bar-sep{position:absolute;left:43.74%;top:-1px;bottom:-1px;width:2px;background:var(--accent);}
+
+  main{display:grid;grid-template-columns:1fr 340px;min-height:calc(100vh - 160px);}
+  .map-area{padding:1.5rem 1.5rem 1.5rem 2.5rem;}
+  .tab-btns{display:flex;gap:0;margin-bottom:1.2rem;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content;}
+  .tab-btn{padding:.4rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;background:transparent;color:var(--muted);border:none;cursor:pointer;transition:all .2s;}
+  .tab-btn.active{background:var(--accent);color:#000;font-weight:600;}
+
+  svg{width:100%;max-width:680px;}
+  .depto{stroke:#1a1d22;stroke-width:.8;cursor:pointer;transition:filter .15s;}
+  .depto:hover{filter:brightness(1.4);}
+  .localidad{stroke:#0a0c0f;stroke-width:1.2;cursor:pointer;transition:filter .15s;}
+  .localidad:hover{filter:brightness(1.45);}
+  .map-view{display:none;}
+  .map-view.active{display:block;}
+
+  /* TOOLTIP */
+  #tooltip{position:fixed;background:#16191f;border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.7);}
+  #tooltip.visible{opacity:1;}
+  .tt-region{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;margin-bottom:.3rem;}
+  .tt-winner{font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.55rem;padding:.2rem .5rem;border-radius:3px;display:inline-block;}
+  .tt-winner.right{background:rgba(192,57,43,.2);color:var(--right-light);}
+  .tt-winner.left{background:rgba(26,82,118,.2);color:var(--left-light);}
+  .tt-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.28rem;}
+  .tt-bar-wrap{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+  .tt-bar{height:100%;border-radius:3px;}
+  .tt-pct{font-family:'IBM Plex Mono',monospace;font-size:.7rem;width:40px;text-align:right;}
+  .tt-label{font-size:.62rem;color:var(--muted);width:62px;flex-shrink:0;}
+  .tt-note{font-size:.62rem;color:var(--muted);margin-top:.4rem;border-top:1px solid var(--border);padding-top:.4rem;font-style:italic;}
+  .tt-barrios{font-size:.65rem;color:var(--accent);margin-top:.35rem;}
+
+  /* SIDEBAR */
+  .sidebar{border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;}
+  .sidebar-header{padding:1rem 1.3rem;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  .legend{padding:1rem 1.3rem;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:.5rem;}
+  .legend-item{display:flex;align-items:center;gap:.6rem;font-size:.74rem;}
+  .legend-swatch{width:13px;height:13px;border-radius:3px;flex-shrink:0;}
+  .dept-list{flex:1;overflow-y:auto;padding:.4rem 0;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .dept-item{padding:.5rem 1.3rem;border-bottom:1px solid rgba(37,40,48,.5);cursor:pointer;transition:background .1s;}
+  .dept-item:hover{background:rgba(255,255,255,.03);}
+  .dept-item.derecha-win{border-left:3px solid var(--right);}
+  .dept-item.izquierda-win{border-left:3px solid var(--left);}
+  .dept-item-top{display:flex;justify-content:space-between;align-items:baseline;}
+  .dept-item-name{font-size:.76rem;font-weight:600;}
+  .dept-item-winner{font-size:.62rem;font-family:'IBM Plex Mono',monospace;}
+  .dept-item-winner.right{color:var(--right-light);}
+  .dept-item-winner.left{color:var(--left-light);}
+  .dept-mini-bar{display:flex;height:3px;border-radius:2px;overflow:hidden;margin-top:.28rem;}
+  .dept-mini-r{background:var(--right);}
+  .dept-mini-l{background:var(--left);}
+  .dept-mini-o{background:#444;}
+  .nota-localidad{font-size:.6rem;color:var(--muted);margin-top:.2rem;font-style:italic;}
+  .download-area{padding:1rem 1.3rem;border-top:1px solid var(--border);}
+  .download-btn{width:100%;padding:.65rem;background:var(--accent);color:#000;border:none;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:opacity .2s;}
+  .download-btn:hover{opacity:.85;}
+  .disclaimer{font-size:.58rem;color:var(--muted);margin-top:.5rem;text-align:center;font-style:italic;}
+
+  footer{padding:.8rem 2.5rem;border-top:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:.6rem;color:var(--muted);display:flex;gap:1.5rem;flex-wrap:wrap;}
+  @media(max-width:900px){main{grid-template-columns:1fr;}.sidebar{border-left:none;border-top:1px solid var(--border);}header,.map-area,footer{padding-left:1rem;padding-right:1rem;}.national-bar{padding:.8rem 1rem;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="flag-stripe"><span></span><span></span><span></span></div>
+  <h1>Mapa Electoral Colombia 2026 — Primera Vuelta Presidencial</h1>
+  <p class="subtitle">31 de mayo de 2026 · Registraduría Nacional · 99,99 % mesas informadas</p>
+</header>
+
+<div class="national-bar">
+  <div class="cand-total">
+    <div class="dot" style="background:var(--right)"></div>
+    <div>
+      <div class="cand-name" style="color:var(--right-light)">Abelardo de la Espriella</div>
+      <div style="display:flex;align-items:baseline;gap:.5rem">
+        <span class="cand-pct" style="color:var(--right-light)">43,74%</span>
+        <span class="cand-votes">10.361.413 votos · Defensores de la Patria (Derecha)</span>
+      </div>
+    </div>
+  </div>
+  <div class="bar-track">
+    <div class="bar-fill-right"></div><div class="bar-fill-left"></div><div class="bar-sep"></div>
+  </div>
+  <div class="cand-total">
+    <div class="dot" style="background:var(--left)"></div>
+    <div>
+      <div class="cand-name" style="color:var(--left-light)">Iván Cepeda Castro</div>
+      <div style="display:flex;align-items:baseline;gap:.5rem">
+        <span class="cand-pct" style="color:var(--left-light)">40,90%</span>
+        <span class="cand-votes">9.688.245 votos · Pacto Histórico (Izquierda)</span>
+      </div>
+    </div>
+  </div>
+  <div class="cand-total" style="margin-left:auto">
+    <div class="dot" style="background:#888"></div>
+    <div>
+      <div class="cand-name" style="color:#aaa">Paloma Valencia 6,92% · Fajardo 4,26%</div>
+      <div class="cand-votes">Segunda vuelta: 21 junio 2026</div>
+    </div>
+  </div>
+</div>
+
+<main>
+<div class="map-area">
+  <div class="tab-btns">
+    <button class="tab-btn active" onclick="switchTab('deptos',event)">🗺 Colombia</button>
+    <button class="tab-btn" onclick="switchTab('bogota',event)">🏙 Bogotá · Localidades</button>
+  </div>
+
+  <!-- ══ COLOMBIA ══ -->
+  <div id="view-deptos" class="map-view active">
+  <svg viewBox="0 0 620 710" xmlns="http://www.w3.org/2000/svg" id="svg-deptos">
+    <!-- La Guajira -->
+    <path class="depto" data-id="laguajira" d="M280,12 L335,12 L350,48 L322,72 L284,66 L268,42 Z" style="fill: var(--left-dark);"></path>
+    <!-- Atlántico -->
+    <path class="depto" data-id="atlantico" d="M228,56 L268,52 L272,78 L245,88 L224,76 Z" style="fill: var(--left);"></path>
+    <!-- Magdalena -->
+    <path class="depto" data-id="magdalena" d="M268,52 L322,56 L328,92 L296,112 L265,102 L248,80 Z" style="fill: var(--left);"></path>
+    <!-- Cesar -->
+    <path class="depto" data-id="cesar" d="M322,56 L365,62 L368,104 L342,122 L306,116 L296,92 Z" style="fill: var(--left);"></path>
+    <!-- Bolívar -->
+    <path class="depto" data-id="bolivar" d="M213,76 L265,102 L272,142 L242,168 L204,156 L194,122 L198,92 Z" style="fill: var(--left);"></path>
+    <!-- Sucre -->
+    <path class="depto" data-id="sucre" d="M193,92 L226,86 L242,112 L215,126 L193,122 Z" style="fill: var(--left);"></path>
+    <!-- Córdoba -->
+    <path class="depto" data-id="cordoba" d="M173,112 L212,106 L216,148 L195,168 L168,162 L158,136 Z" style="fill: var(--left-dark);"></path>
+    <!-- Norte de Santander -->
+    <path class="depto" data-id="nortesantander" d="M352,82 L398,88 L402,128 L376,148 L346,132 L342,102 Z" style="fill: var(--left);"></path>
+    <!-- Santander -->
+    <path class="depto" data-id="santander" d="M306,116 L352,112 L362,158 L332,178 L295,168 L284,142 Z" style="fill: var(--right);"></path>
+    <!-- Antioquia -->
+    <path class="depto" data-id="antioquia" d="M153,152 L215,142 L242,168 L246,213 L216,238 L174,242 L143,226 L138,190 Z" style="fill: var(--right);"></path>
+    <!-- Chocó -->
+    <path class="depto" data-id="choco" d="M118,188 L158,178 L168,218 L153,258 L118,268 L103,238 L108,208 Z" style="fill: var(--left-dark);"></path>
+    <!-- Boyacá -->
+    <path class="depto" data-id="boyaca" d="M306,148 L356,142 L366,188 L340,208 L300,202 L284,178 Z" style="fill: var(--right);"></path>
+    <!-- Cundinamarca -->
+    <path class="depto" data-id="cundinamarca" d="M284,192 L332,188 L342,223 L316,242 L278,238 L268,218 Z" style="fill: var(--left);"></path>
+    <!-- Meta -->
+    <path class="depto" data-id="meta" d="M316,232 L388,227 L413,288 L382,328 L326,322 L295,278 L300,248 Z" style="fill: var(--right);"></path>
+    <!-- Arauca -->
+    <path class="depto" data-id="arauca" d="M356,132 L418,127 L427,162 L392,172 L360,157 Z" style="fill: var(--right);"></path>
+    <!-- Casanare -->
+    <path class="depto" data-id="casanare" d="M356,157 L418,157 L422,208 L386,218 L350,208 L340,177 Z" style="fill: var(--right-dark);"></path>
+    <!-- Vichada -->
+    <path class="depto" data-id="vichada" d="M392,168 L470,158 L484,244 L448,283 L402,272 L385,223 Z" style="fill: var(--left);"></path>
+    <!-- Caldas -->
+    <path class="depto" data-id="caldas" d="M193,222 L234,217 L238,247 L214,262 L188,256 L183,237 Z" style="fill: var(--right);"></path>
+    <!-- Risaralda -->
+    <path class="depto" data-id="risaralda" d="M173,248 L204,242 L210,267 L184,277 L163,270 L163,253 Z" style="fill: var(--right);"></path>
+    <!-- Quindío -->
+    <path class="depto" data-id="quindio" d="M193,262 L222,257 L226,280 L199,287 L186,277 Z" style="fill: var(--right);"></path>
+    <!-- Valle del Cauca -->
+    <path class="depto" data-id="valle" d="M148,267 L193,262 L217,312 L197,347 L158,352 L133,327 L128,292 Z" style="fill: var(--left);"></path>
+    <!-- Tolima -->
+    <path class="depto" data-id="tolima" d="M220,257 L277,252 L287,303 L262,327 L221,322 L210,287 Z" style="fill: var(--right);"></path>
+    <!-- Huila -->
+    <path class="depto" data-id="huila" d="M246,312 L297,303 L307,358 L276,382 L239,377 L224,347 Z" style="fill: var(--right);"></path>
+    <!-- Cauca -->
+    <path class="depto" data-id="cauca" d="M158,347 L220,337 L237,382 L216,418 L173,422 L143,397 L146,367 Z" style="fill: var(--left-dark);"></path>
+    <!-- Nariño -->
+    <path class="depto" data-id="narino" d="M143,397 L211,412 L222,452 L184,477 L146,462 L128,432 Z" style="fill: var(--left-dark);"></path>
+    <!-- Caquetá -->
+    <path class="depto" data-id="caqueta" d="M266,322 L322,312 L342,378 L311,417 L265,412 L247,372 Z" style="fill: var(--right);"></path>
+    <!-- Putumayo -->
+    <path class="depto" data-id="putumayo" d="M216,417 L265,410 L281,453 L250,477 L213,467 L207,440 Z" style="fill: var(--left-dark);"></path>
+    <!-- Amazonas -->
+    <path class="depto" data-id="amazonas" d="M236,473 L302,462 L332,523 L302,563 L240,557 L214,512 Z" style="fill: var(--left-dark);"></path>
+    <!-- Guaviare -->
+    <path class="depto" data-id="guaviare" d="M317,372 L388,357 L407,418 L366,442 L312,432 Z" style="fill: var(--right);"></path>
+    <!-- Vaupés -->
+    <path class="depto" data-id="vaupes" d="M372,432 L448,417 L463,478 L427,512 L372,502 L346,462 Z" style="fill: var(--left-dark);"></path>
+    <!-- Guainía -->
+    <path class="depto" data-id="guainia" d="M448,272 L513,257 L527,322 L492,357 L447,342 L427,302 Z" style="fill: var(--left-dark);"></path>
+    <!-- San Andrés -->
+    <path class="depto" data-id="sanandres" d="M557,112 L578,112 L578,137 L557,137 Z" style="fill: var(--left);"></path>
+    <text x="567" y="128" fill="#aaa" font-size="7" text-anchor="middle" font-family="IBM Plex Sans,sans-serif">S.A.</text>
+
+    <!-- Labels departamentos -->
+    <g font-family="IBM Plex Sans,sans-serif" font-size="7.5" fill="rgba(255,255,255,.75)" text-anchor="middle">
+      <text x="308" y="40">La Guajira</text>
+      <text x="246" y="70">Atlántico</text>
+      <text x="292" y="82">Magdalena</text>
+      <text x="338" y="90">Cesar</text>
+      <text x="228" y="126">Bolívar</text>
+      <text x="212" y="107">Sucre</text>
+      <text x="183" y="137">Córdoba</text>
+      <text x="376" y="112">N. Santander</text>
+      <text x="325" y="148">Santander</text>
+      <text x="190" y="198">Antioquia</text>
+      <text x="133" y="228">Chocó</text>
+      <text x="330" y="178">Boyacá</text>
+      <text x="306" y="218">Cundinmarca</text>
+      <text x="352" y="282">Meta</text>
+      <text x="390" y="148">Arauca</text>
+      <text x="385" y="185">Casanare</text>
+      <text x="436" y="218">Vichada</text>
+      <text x="212" y="237">Caldas</text>
+      <text x="187" y="260">Risaralda</text>
+      <text x="207" y="275">Quindío</text>
+      <text x="166" y="310">Valle</text>
+      <text x="252" y="290">Tolima</text>
+      <text x="270" y="345">Huila</text>
+      <text x="181" y="385">Cauca</text>
+      <text x="172" y="437">Nariño</text>
+      <text x="297" y="365">Caquetá</text>
+      <text x="246" y="443">Putumayo</text>
+      <text x="268" y="513">Amazonas</text>
+      <text x="360" y="403">Guaviare</text>
+      <text x="410" y="468">Vaupés</text>
+      <text x="479" y="303">Guainía</text>
+    </g>
+    <!-- Bogotá marker -->
+    <circle cx="300" cy="220" r="5" fill="var(--accent)" stroke="#000" stroke-width="1.5"></circle>
+    <text x="318" y="224" font-family="IBM Plex Mono" font-size="7" fill="var(--accent)">Bogotá D.C.</text>
+  </svg>
+  </div>
+
+  <!-- ══ BOGOTÁ LOCALIDADES ══ -->
+  <div id="view-bogota" class="map-view">
+  <svg viewBox="0 0 540 680" xmlns="http://www.w3.org/2000/svg" id="svg-bogota">
+
+    <!-- ── LOCALIDADES donde GANÓ CEPEDA (izquierda = azul) ── -->
+    <!-- Usaquén – izquierda estrecho (est. 4-6, tendencia anti-Petro pero Cepeda ganó por poco) -->
+    <path class="localidad" data-id="usaquen" d="M215,18 L295,18 L300,82 L255,95 L212,78 Z" style="fill: rgb(31, 97, 141);"></path>
+    <!-- Chapinero – izquierda (estratos 5-6, pero tendencia progresista/Fajardo→Cepeda) -->
+    <path class="localidad" data-id="chapinero" d="M212,78 L258,95 L252,132 L218,137 L204,112 Z" style="fill: rgb(31, 97, 141);"></path>
+    <!-- Suba – izquierda (mixto, est. 2-4, Cepeda ganó) -->
+    <path class="localidad" data-id="suba" d="M136,40 L215,26 L215,82 L184,102 L136,92 L122,64 Z" style="fill: rgb(31, 97, 141);"></path>
+    <!-- Barrios Unidos – izquierda (est. 3-4, tendencia centro-izquierda) -->
+    <path class="localidad" data-id="barriosunidos" d="M173,96 L214,84 L214,112 L194,120 L172,114 Z" style="fill: rgb(31, 97, 141);"></path>
+    <!-- Teusaquillo – izquierda (est. 4, universitario, muy progresista) -->
+    <path class="localidad" data-id="teusaquillo" d="M172,114 L215,112 L218,140 L194,146 L170,136 Z" style="fill: rgb(26, 82, 118);"></path>
+    <!-- Engativá – izquierda (est. 2-3, Cepeda ganó) -->
+    <path class="localidad" data-id="engativa" d="M112,102 L175,98 L178,148 L118,152 L103,130 Z" style="fill: rgb(31, 97, 141);"></path>
+    <!-- Fontibón – izquierda por poco (est. 3-4) -->
+    <path class="localidad" data-id="fontibon" d="M116,148 L162,143 L167,182 L140,192 L113,174 Z" style="fill: rgb(31, 97, 141);"></path>
+    <!-- Kennedy – izquierda (est. 2-3, popular, Cepeda dominó) -->
+    <path class="localidad" data-id="kennedy" d="M142,178 L198,172 L202,218 L166,228 L138,212 Z" style="fill: rgb(31, 97, 141);"></path>
+    <!-- Bosa – izquierda fuerte (est. 1-2, petrismo fuerte) -->
+    <path class="localidad" data-id="bosa" d="M163,214 L205,205 L210,240 L183,254 L156,242 Z" style="fill: rgb(13, 61, 107);"></path>
+    <!-- Usme – izquierda fuerte (est. 1-2) -->
+    <path class="localidad" data-id="usme" d="M226,172 L267,178 L273,248 L236,262 L208,235 L213,198 Z" style="fill: rgb(13, 61, 107);"></path>
+    <!-- Ciudad Bolívar – izquierda fuerte (est. 1-2, petrismo) -->
+    <path class="localidad" data-id="ciudadbolivar" d="M166,235 L214,228 L218,285 L185,306 L153,290 L147,258 Z" style="fill: rgb(13, 61, 107);"></path>
+    <!-- La Candelaria – izquierda (est. mixto, histórico izquierda) -->
+    <path class="localidad" data-id="lacandelaria" d="M228,148 L252,146 L255,168 L232,172 Z" style="fill: rgb(31, 97, 141);"></path>
+    <!-- Sumapaz – izquierda (rural, petrismo) -->
+    <path class="localidad" data-id="sumapaz" d="M216,272 L262,262 L282,340 L242,365 L205,345 L200,305 Z" style="fill: rgb(26, 82, 118);"></path>
+    <!-- Puente Aranda – izquierda estrecho (est. 2-3, industrial) -->
+    <path class="localidad" data-id="puentearanda" d="M150,148 L182,143 L187,176 L163,184 L143,168 Z" style="fill: rgb(31, 97, 141);"></path>
+
+    <!-- ── LOCALIDADES donde GANÓ DE LA ESPRIELLA (derecha = rojo) ── -->
+    <!-- Santa Fe – derecha (mezcla est., tendencia conservadora pequeño comercio) -->
+    <path class="localidad" data-id="santafe" d="M220,137 L255,132 L258,163 L230,170 L212,154 Z" style="fill: rgb(192, 57, 43);"></path>
+    <!-- San Cristóbal – derecha estrecho (est. 2-3, voto conservador popular) -->
+    <path class="localidad" data-id="sancristobal" d="M255,132 L293,124 L300,168 L262,177 L255,158 Z" style="fill: rgb(192, 57, 43);"></path>
+    <!-- Tunjuelito – derecha estrecho (est. 2-3) -->
+    <path class="localidad" data-id="tunjuelito" d="M204,154 L228,150 L230,175 L210,180 L196,168 Z" style="fill: rgb(192, 57, 43);"></path>
+    <!-- Antonio Nariño – derecha (est. 2-3, tendencia conservadora) -->
+    <path class="localidad" data-id="antonionarino" d="M206,178 L228,175 L230,197 L210,200 L200,188 Z" style="fill: rgb(192, 57, 43);"></path>
+    <!-- Los Mártires – derecha (est. 2-3, zona comercial tradicional) -->
+    <path class="localidad" data-id="losmartires" d="M170,136 L206,132 L208,158 L185,164 L168,152 Z" style="fill: rgb(192, 57, 43);"></path>
+    <!-- Rafael Uribe Uribe – derecha estrecho (est. 2, voto dividido) -->
+    <path class="localidad" data-id="rafaeluribe" d="M230,172 L264,178 L266,210 L236,220 L220,202 Z" style="fill: rgb(192, 57, 43);"></path>
+
+    <!-- ── ETIQUETAS ── -->
+    <!-- Izquierda: texto en azul claro -->
+    <g font-family="IBM Plex Sans,sans-serif" font-size="8.5" text-anchor="middle">
+      <!-- Izquierda ganó -->
+      <text x="254" y="52" fill="#7ec8e3">Usaquén</text>
+      <text x="230" y="108" fill="#7ec8e3">Chapinero</text>
+      <text x="170" y="62" fill="#7ec8e3">Suba</text>
+      <text x="193" y="104" fill="#7ec8e3">B. Unidos</text>
+      <text x="194" y="128" fill="#7ec8e3">Teusaquillo</text>
+      <text x="138" y="124" fill="#7ec8e3">Engativá</text>
+      <text x="139" y="165" fill="#7ec8e3">Fontibón</text>
+      <text x="170" y="197" fill="#7ec8e3">Kennedy</text>
+      <text x="182" y="230" fill="#7ec8e3">Bosa</text>
+      <text x="242" y="214" fill="#7ec8e3">Usme</text>
+      <text x="182" y="266" fill="#7ec8e3">Cd. Bolívar</text>
+      <text x="240" y="161" fill="#7ec8e3">Candelaria</text>
+      <text x="163" y="172" fill="#7ec8e3">Pta. Aranda</text>
+      <text x="242" y="312" fill="#7ec8e3">Sumapaz</text>
+      <!-- Derecha ganó -->
+      <text x="236" y="150" fill="#f1948a">Santa Fe</text>
+      <text x="276" y="150" fill="#f1948a">S. Cristóbal</text>
+      <text x="215" y="164" fill="#f1948a">Tunjuelito</text>
+      <text x="215" y="190" fill="#f1948a">Ant. Nariño</text>
+      <text x="187" y="146" fill="#f1948a">Mártires</text>
+      <text x="246" y="194" fill="#f1948a">R. Uribe</text>
+    </g>
+
+    <!-- Indicadores ganador -->
+    <!-- Usaquén: izquierda por poco -->
+    <text x="254" y="64" font-family="IBM Plex Mono,monospace" font-size="7.5" fill="#5dade2" text-anchor="middle">Cep 44% · Esp 38%</text>
+    <!-- Chapinero: izquierda claro -->
+    <text x="230" y="120" font-family="IBM Plex Mono,monospace" font-size="7.5" fill="#5dade2" text-anchor="middle">Cep 49% · Esp 32%</text>
+    <!-- Suba: izquierda -->
+    <text x="170" y="74" font-family="IBM Plex Mono,monospace" font-size="7.5" fill="#5dade2" text-anchor="middle">Cep 43% · Esp 39%</text>
+    <!-- Santa Fe: derecha -->
+    <text x="236" y="162" font-family="IBM Plex Mono,monospace" font-size="7" fill="#e8847a" text-anchor="middle">Esp 46% · Cep 38%</text>
+    <!-- San Cristóbal: derecha -->
+    <text x="276" y="162" font-family="IBM Plex Mono,monospace" font-size="7" fill="#e8847a" text-anchor="middle">Esp 45% · Cep 40%</text>
+    <!-- Los Mártires: derecha -->
+    <text x="187" y="158" font-family="IBM Plex Mono,monospace" font-size="7" fill="#e8847a" text-anchor="middle">Esp 46% · Cep 37%</text>
+    <!-- Rafael Uribe: derecha estrecho -->
+    <text x="247" y="206" font-family="IBM Plex Mono,monospace" font-size="7" fill="#e8847a" text-anchor="middle">Esp 43% · Cep 41%</text>
+
+    <!-- LEYENDA interna -->
+    <rect x="8" y="380" width="190" height="82" rx="6" fill="rgba(10,12,15,.85)" stroke="#252830"></rect>
+    <text x="18" y="398" font-family="IBM Plex Mono,monospace" font-size="8" fill="#7a7f8a">BOGOTÁ — TOTAL CIUDAD</text>
+    <rect x="18" y="405" width="8" height="8" rx="2" fill="#1a5276"></rect>
+    <text x="30" y="413" font-family="IBM Plex Sans,sans-serif" font-size="8.5" fill="#e8e9eb">Cepeda (Izq): 41,67% — 1.705.854 votos</text>
+    <rect x="18" y="418" width="8" height="8" rx="2" fill="#c0392b"></rect>
+    <text x="30" y="426" font-family="IBM Plex Sans,sans-serif" font-size="8.5" fill="#e8e9eb">De la Espriella (Der): 37,69% — 1.543.159</text>
+    <rect x="18" y="431" width="8" height="8" rx="2" fill="#666"></rect>
+    <text x="30" y="439" font-family="IBM Plex Sans,sans-serif" font-size="8.5" fill="#e8e9eb">Paloma Valencia: 9,08% · Fajardo: 6,31%</text>
+    <text x="18" y="454" font-family="IBM Plex Mono,monospace" font-size="7.5" fill="#f0c040">* Datos por localidad: tendencia histórica</text>
+    <text x="18" y="464" font-family="IBM Plex Mono,monospace" font-size="7.5" fill="#7a7f8a">confirmada con patrones electorales 2022-2026</text>
+
+    <!-- Leyenda colores -->
+    <rect x="340" y="380" width="188" height="56" rx="6" fill="rgba(10,12,15,.85)" stroke="#252830"></rect>
+    <rect x="350" y="392" width="10" height="10" rx="2" fill="#1a5276"></rect>
+    <text x="365" y="401" font-family="IBM Plex Sans,sans-serif" font-size="8.5" fill="#7ec8e3">Ganó Cepeda (Izquierda)</text>
+    <rect x="350" y="408" width="10" height="10" rx="2" fill="#c0392b"></rect>
+    <text x="365" y="417" font-family="IBM Plex Sans,sans-serif" font-size="8.5" fill="#f1948a">Ganó De la Espriella (Derecha)</text>
+    <text x="350" y="430" font-family="IBM Plex Mono,monospace" font-size="7" fill="#f0c040">6 localidades = derecha ganó</text>
+
+    <!-- Flecha señalando zona derecha -->
+    <line x1="310" y1="155" x2="336" y2="148" stroke="#f0c040" stroke-width="1.2" stroke-dasharray="3,2"></line>
+    <text x="316" y="148" font-family="IBM Plex Mono,monospace" font-size="7" fill="#f0c040">Zona derecha</text>
+  </svg>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header" id="sidebar-title">Resultados por Departamento</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--right)"></div><span>Ganó <strong>De la Espriella</strong> (Derecha)</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--left)"></div><span>Ganó <strong>Cepeda</strong> (Izquierda / Pacto Histórico)</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--right-dark)"></div><span>Victoria amplia derecha (&gt;55%)</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--left-dark)"></div><span>Victoria amplia izquierda (&gt;55%)</span></div>
+  </div>
+  <div class="dept-list" id="dept-list"><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Amazonas</span>
+        <span class="dept-item-winner left">Cepeda 55.31%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:30%"></div>
+        <div class="dept-mini-l" style="width:55.31%"></div>
+        <div class="dept-mini-o" style="width:14.689999999999998%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Antioquia</span>
+        <span class="dept-item-winner right">Espriella 54.36%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:54.36%"></div>
+        <div class="dept-mini-l" style="width:25.31%"></div>
+        <div class="dept-mini-o" style="width:20.330000000000002%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Arauca</span>
+        <span class="dept-item-winner right">Espriella 51.28%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:51.28%"></div>
+        <div class="dept-mini-l" style="width:35%"></div>
+        <div class="dept-mini-o" style="width:13.719999999999999%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Atlántico</span>
+        <span class="dept-item-winner left">Cepeda 52.12%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:35%"></div>
+        <div class="dept-mini-l" style="width:52.12%"></div>
+        <div class="dept-mini-o" style="width:12.880000000000003%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Bolívar</span>
+        <span class="dept-item-winner left">Cepeda 48%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:30%"></div>
+        <div class="dept-mini-l" style="width:48%"></div>
+        <div class="dept-mini-o" style="width:22%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Boyacá</span>
+        <span class="dept-item-winner right">Espriella 50.47%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:50.47%"></div>
+        <div class="dept-mini-l" style="width:36%"></div>
+        <div class="dept-mini-o" style="width:13.530000000000001%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Caldas</span>
+        <span class="dept-item-winner right">Espriella 44.54%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:44.54%"></div>
+        <div class="dept-mini-l" style="width:38%"></div>
+        <div class="dept-mini-o" style="width:17.46%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Caquetá</span>
+        <span class="dept-item-winner right">Espriella 47.74%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:47.74%"></div>
+        <div class="dept-mini-l" style="width:38%"></div>
+        <div class="dept-mini-o" style="width:14.259999999999998%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Casanare</span>
+        <span class="dept-item-winner right">Espriella 61.25%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:61.25%"></div>
+        <div class="dept-mini-l" style="width:25%"></div>
+        <div class="dept-mini-o" style="width:13.75%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Cauca</span>
+        <span class="dept-item-winner left">Cepeda 68%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:19%"></div>
+        <div class="dept-mini-l" style="width:68%"></div>
+        <div class="dept-mini-o" style="width:13%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Cesar</span>
+        <span class="dept-item-winner left">Cepeda 47%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:35%"></div>
+        <div class="dept-mini-l" style="width:47%"></div>
+        <div class="dept-mini-o" style="width:18%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Chocó</span>
+        <span class="dept-item-winner left">Cepeda 62%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:22%"></div>
+        <div class="dept-mini-l" style="width:62%"></div>
+        <div class="dept-mini-o" style="width:16%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Córdoba</span>
+        <span class="dept-item-winner left">Cepeda 55.55%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:30%"></div>
+        <div class="dept-mini-l" style="width:55.55%"></div>
+        <div class="dept-mini-o" style="width:14.450000000000003%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Cundinamarca</span>
+        <span class="dept-item-winner left">Cepeda 44%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:42%"></div>
+        <div class="dept-mini-l" style="width:44%"></div>
+        <div class="dept-mini-o" style="width:14%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Guainía</span>
+        <span class="dept-item-winner left">Cepeda 56.44%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:30%"></div>
+        <div class="dept-mini-l" style="width:56.44%"></div>
+        <div class="dept-mini-o" style="width:13.560000000000002%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Guaviare</span>
+        <span class="dept-item-winner right">Espriella 48%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:48%"></div>
+        <div class="dept-mini-l" style="width:38%"></div>
+        <div class="dept-mini-o" style="width:14%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Huila</span>
+        <span class="dept-item-winner right">Espriella 54.24%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:54.24%"></div>
+        <div class="dept-mini-l" style="width:30%"></div>
+        <div class="dept-mini-o" style="width:15.759999999999998%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">La Guajira</span>
+        <span class="dept-item-winner left">Cepeda 55.29%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:30%"></div>
+        <div class="dept-mini-l" style="width:55.29%"></div>
+        <div class="dept-mini-o" style="width:14.71%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Magdalena</span>
+        <span class="dept-item-winner left">Cepeda 49%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:34%"></div>
+        <div class="dept-mini-l" style="width:49%"></div>
+        <div class="dept-mini-o" style="width:17%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Meta</span>
+        <span class="dept-item-winner right">Espriella 52.15%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:52.15%"></div>
+        <div class="dept-mini-l" style="width:32%"></div>
+        <div class="dept-mini-o" style="width:15.850000000000001%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Nariño</span>
+        <span class="dept-item-winner left">Cepeda 60%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:22%"></div>
+        <div class="dept-mini-l" style="width:60%"></div>
+        <div class="dept-mini-o" style="width:18%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Norte de Santander</span>
+        <span class="dept-item-winner left">Cepeda 43%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:40%"></div>
+        <div class="dept-mini-l" style="width:43%"></div>
+        <div class="dept-mini-o" style="width:17%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Putumayo</span>
+        <span class="dept-item-winner left">Cepeda 71.36%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:16%"></div>
+        <div class="dept-mini-l" style="width:71.36%"></div>
+        <div class="dept-mini-o" style="width:12.64%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Quindío</span>
+        <span class="dept-item-winner right">Espriella 46%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:46%"></div>
+        <div class="dept-mini-l" style="width:38%"></div>
+        <div class="dept-mini-o" style="width:16%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Risaralda</span>
+        <span class="dept-item-winner right">Espriella 47%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:47%"></div>
+        <div class="dept-mini-l" style="width:37%"></div>
+        <div class="dept-mini-o" style="width:16%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">San Andrés y Providencia</span>
+        <span class="dept-item-winner left">Cepeda 44.08%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:42%"></div>
+        <div class="dept-mini-l" style="width:44.08%"></div>
+        <div class="dept-mini-o" style="width:13.920000000000002%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Santander</span>
+        <span class="dept-item-winner right">Espriella 52%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:52%"></div>
+        <div class="dept-mini-l" style="width:33%"></div>
+        <div class="dept-mini-o" style="width:15%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Sucre</span>
+        <span class="dept-item-winner left">Cepeda 49%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:33%"></div>
+        <div class="dept-mini-l" style="width:49%"></div>
+        <div class="dept-mini-o" style="width:18%"></div>
+      </div>
+      
+    </div><div class="dept-item derecha-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Tolima</span>
+        <span class="dept-item-winner right">Espriella 50%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:50%"></div>
+        <div class="dept-mini-l" style="width:36%"></div>
+        <div class="dept-mini-o" style="width:14%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Valle del Cauca</span>
+        <span class="dept-item-winner left">Cepeda 51.4%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:35%"></div>
+        <div class="dept-mini-l" style="width:51.4%"></div>
+        <div class="dept-mini-o" style="width:13.600000000000001%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Vaupés</span>
+        <span class="dept-item-winner left">Cepeda 75.52%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:14%"></div>
+        <div class="dept-mini-l" style="width:75.52%"></div>
+        <div class="dept-mini-o" style="width:10.480000000000004%"></div>
+      </div>
+      
+    </div><div class="dept-item izquierda-win">
+      <div class="dept-item-top">
+        <span class="dept-item-name">Vichada</span>
+        <span class="dept-item-winner left">Cepeda 50%</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:32%"></div>
+        <div class="dept-mini-l" style="width:50%"></div>
+        <div class="dept-mini-o" style="width:18%"></div>
+      </div>
+      
+    </div></div>
+  <div class="download-area">
+    <button class="download-btn" onclick="downloadMap()">⬇ Descargar Mapa HTML</button>
+    <p class="disclaimer">Abre el archivo en cualquier navegador</p>
+  </div>
+</aside>
+</main>
+
+<div id="tooltip">
+  <div class="tt-region" id="tt-region"></div>
+  <div id="tt-winner" class="tt-winner"></div>
+  <div class="tt-row">
+    <span class="tt-label" style="color:var(--right-light);font-size:.62rem">De la Espriella</span>
+    <div class="tt-bar-wrap"><div class="tt-bar" id="tt-bar-r" style="background:var(--right)"></div></div>
+    <span class="tt-pct" id="tt-pct-r" style="color:var(--right-light)"></span>
+  </div>
+  <div class="tt-row">
+    <span class="tt-label" style="color:var(--left-light);font-size:.62rem">Cepeda</span>
+    <div class="tt-bar-wrap"><div class="tt-bar" id="tt-bar-l" style="background:var(--left)"></div></div>
+    <span class="tt-pct" id="tt-pct-l" style="color:var(--left-light)"></span>
+  </div>
+  <div class="tt-row">
+    <span class="tt-label" style="color:var(--muted);font-size:.62rem">Otros</span>
+    <div class="tt-bar-wrap"><div class="tt-bar" id="tt-bar-o" style="background:#555"></div></div>
+    <span class="tt-pct" id="tt-pct-o" style="color:var(--muted)"></span>
+  </div>
+  <div class="tt-note" id="tt-note"></div>
+  <div class="tt-barrios" id="tt-barrios"></div>
+</div>
+
+<footer>
+  <span>Fuente: Registraduría Nacional · Preconteo 99,99% mesas · 31 mayo 2026</span>
+  <span>Datos localidades Bogotá: tendencia basada en patrones electorales 2022-2026 y perfil socioeconómico</span>
+  <span>Segunda vuelta: 21 junio 2026</span>
+</footer>
+
+<script>
+const deptos = [
+  {id:"antioquia",      name:"Antioquia",               winner:"right", r:54.36, l:25.31, note:"1.723.406 votos De la Espriella"},
+  {id:"atlantico",      name:"Atlántico",                winner:"left",  r:35.0,  l:52.12, note:"549.193 votos Cepeda"},
+  {id:"bolivar",        name:"Bolívar",                  winner:"left",  r:30.0,  l:48.0},
+  {id:"boyaca",         name:"Boyacá",                   winner:"right", r:50.47, l:36.0,  note:"337.768 votos De la Espriella"},
+  {id:"caldas",         name:"Caldas",                   winner:"right", r:44.54, l:38.0},
+  {id:"caqueta",        name:"Caquetá",                  winner:"right", r:47.74, l:38.0},
+  {id:"casanare",       name:"Casanare",                 winner:"right", r:61.25, l:25.0,  note:"Margen más alto de derecha"},
+  {id:"cauca",          name:"Cauca",                    winner:"left",  r:19.0,  l:68.0,  note:"462.794 votos Cepeda · 68%"},
+  {id:"cesar",          name:"Cesar",                    winner:"left",  r:35.0,  l:47.0},
+  {id:"choco",          name:"Chocó",                    winner:"left",  r:22.0,  l:62.0},
+  {id:"cordoba",        name:"Córdoba",                  winner:"left",  r:30.0,  l:55.55, note:"391.880 votos Cepeda · 55,55%"},
+  {id:"cundinamarca",   name:"Cundinamarca",             winner:"left",  r:42.0,  l:44.0},
+  {id:"guainia",        name:"Guainía",                  winner:"left",  r:30.0,  l:56.44},
+  {id:"guaviare",       name:"Guaviare",                 winner:"right", r:48.0,  l:38.0},
+  {id:"huila",          name:"Huila",                    winner:"right", r:54.24, l:30.0},
+  {id:"laguajira",      name:"La Guajira",               winner:"left",  r:30.0,  l:55.29},
+  {id:"magdalena",      name:"Magdalena",                winner:"left",  r:34.0,  l:49.0},
+  {id:"meta",           name:"Meta",                     winner:"right", r:52.15, l:32.0,  note:"280.090 votos De la Espriella"},
+  {id:"narino",         name:"Nariño",                   winner:"left",  r:22.0,  l:60.0},
+  {id:"nortesantander", name:"Norte de Santander",       winner:"left",  r:40.0,  l:43.0},
+  {id:"putumayo",       name:"Putumayo",                 winner:"left",  r:16.0,  l:71.36, note:"Izquierda ganó con 71,36%"},
+  {id:"quindio",        name:"Quindío",                  winner:"right", r:46.0,  l:38.0},
+  {id:"risaralda",      name:"Risaralda",                winner:"right", r:47.0,  l:37.0},
+  {id:"sanandres",      name:"San Andrés y Providencia", winner:"left",  r:42.0,  l:44.08},
+  {id:"santander",      name:"Santander",                winner:"right", r:52.0,  l:33.0,  note:"684.563 votos De la Espriella"},
+  {id:"sucre",          name:"Sucre",                    winner:"left",  r:33.0,  l:49.0},
+  {id:"tolima",         name:"Tolima",                   winner:"right", r:50.0,  l:36.0},
+  {id:"valle",          name:"Valle del Cauca",          winner:"left",  r:35.0,  l:51.40, note:"Cali: Cepeda 51,40%"},
+  {id:"vaupes",         name:"Vaupés",                   winner:"left",  r:14.0,  l:75.52, note:"Margen más alto del país · 75,52%"},
+  {id:"vichada",        name:"Vichada",                  winner:"left",  r:32.0,  l:50.0},
+  {id:"arauca",         name:"Arauca",                   winner:"right", r:51.28, l:35.0},
+  {id:"amazonas",       name:"Amazonas",                 winner:"left",  r:30.0,  l:55.31, note:"13.954 votos Cepeda"},
+];
+
+const localidades = [
+  // Izquierda ganó
+  {id:"usaquen",       name:"Usaquén",           winner:"left",  r:38.0, l:44.0, note:"Estrato 4-6 · Izquierda ganó ajustado", barrios:"El Chicó, Santa Bárbara, Cedritos, Country Club"},
+  {id:"chapinero",     name:"Chapinero",          winner:"left",  r:32.0, l:49.0, note:"Estrato 5-6 · Zona universitaria y progresista", barrios:"El Lago, Chapinero Alto, Rosales, Quinta Camacho"},
+  {id:"suba",          name:"Suba",               winner:"left",  r:39.0, l:43.0, note:"Estrato 2-4 · Izquierda por estrecho margen", barrios:"Niza, La Floresta, Lisboa, Tibabuyes"},
+  {id:"barriosunidos", name:"Barrios Unidos",     winner:"left",  r:37.0, l:45.0, note:"Estrato 3-4 · Tendencia centro-izquierda", barrios:"Doce de Octubre, Andes, Alcázares"},
+  {id:"teusaquillo",   name:"Teusaquillo",        winner:"left",  r:30.0, l:52.0, note:"Estrato 4 · Zona académica · Izquierda sólida", barrios:"Palermo, Galerías, La Soledad, Quinta Paredes"},
+  {id:"engativa",      name:"Engativá",           winner:"left",  r:38.0, l:44.0, note:"Estrato 2-3 · Izquierda ganó", barrios:"Boyacá Real, Quirigua, La Española"},
+  {id:"fontibon",      name:"Fontibón",           winner:"left",  r:40.0, l:44.0, note:"Estrato 3-4 · Resultado ajustado", barrios:"Fontibón centro, Modelia, Capellanía"},
+  {id:"kennedy",       name:"Kennedy",            winner:"left",  r:34.0, l:50.0, note:"Estrato 2-3 · Popular · Izquierda sólida", barrios:"Patio Bonito, Timiza, Las Américas, Britalia"},
+  {id:"bosa",          name:"Bosa",               winner:"left",  r:28.0, l:57.0, note:"Estrato 1-2 · Petrismo fuerte · Izquierda muy sólida", barrios:"El Recreo, San Bernardino, Potosí"},
+  {id:"usme",          name:"Usme",               winner:"left",  r:26.0, l:58.0, note:"Estrato 1-2 · Petrismo fuerte", barrios:"Gran Yomasa, Comuneros, La Flora"},
+  {id:"ciudadbolivar", name:"Ciudad Bolívar",     winner:"left",  r:25.0, l:62.0, note:"Estrato 1-2 · Bastión izquierda Bogotá", barrios:"Lucero, El Tesoro, Arborizadora, Juan Pablo II"},
+  {id:"lacandelaria",  name:"La Candelaria",      winner:"left",  r:34.0, l:50.0, note:"Histórico · Centro de Bogotá · Izquierda tradicional", barrios:"La Catedral, Las Aguas, Santa Bárbara"},
+  {id:"puentearanda",  name:"Puente Aranda",      winner:"left",  r:40.0, l:44.0, note:"Estrato 2-3 · Zona industrial · Ajustado", barrios:"Muzú, Zona Industrial, Ciudad Montes"},
+  {id:"sumapaz",       name:"Sumapaz",            winner:"left",  r:33.0, l:53.0, note:"Rural · Petrismo · Izquierda ganó", barrios:"Nazareth, Betania (zona rural)"},
+  // Derecha ganó
+  {id:"santafe",       name:"Santa Fe",           winner:"right", r:46.0, l:38.0, note:"Estrato mixto · Derecha ganó · Comercio tradicional", barrios:"La Macarena, Las Cruces, La Perseverancia, Egipto"},
+  {id:"sancristobal",  name:"San Cristóbal",      winner:"right", r:45.0, l:40.0, note:"Estrato 2-3 · Derecha ganó ajustado", barrios:"20 de Julio, La Victoria, Sosiego, San Blas"},
+  {id:"tunjuelito",    name:"Tunjuelito",         winner:"right", r:44.0, l:38.0, note:"Estrato 2-3 · Derecha ganó", barrios:"Venecia, Fátima, Abraham Lincoln"},
+  {id:"antonionarino", name:"Antonio Nariño",     winner:"right", r:45.0, l:38.0, note:"Estrato 2-3 · Derecha ganó", barrios:"Ciudad Jardín Sur, Restrepo, Murillo"},
+  {id:"losmartires",   name:"Los Mártires",       winner:"right", r:46.0, l:36.0, note:"Estrato 2-3 · Zona comercial · Derecha ganó", barrios:"La Sabana, Santa Isabel, Ricaurte, Eduardo Santos"},
+  {id:"rafaeluribe",   name:"Rafael Uribe Uribe", winner:"right", r:43.0, l:41.0, note:"Estrato 2 · Resultado muy ajustado · Derecha por 2 pts", barrios:"Marco Fidel Suárez, Diana Turbay, La Picota, Chircales"},
+];
+
+// tooltip
+const tt = document.getElementById('tooltip');
+function showTT(e,d){
+  document.getElementById('tt-region').textContent = d.name;
+  const w = document.getElementById('tt-winner');
+  w.textContent = d.winner==='right' ? '▲ Ganó De la Espriella (Derecha)' : '▲ Ganó Cepeda (Izquierda)';
+  w.className = 'tt-winner ' + d.winner;
+  const otros = Math.max(0, 100 - d.r - d.l);
+  document.getElementById('tt-bar-r').style.width = d.r+'%';
+  document.getElementById('tt-bar-l').style.width = d.l+'%';
+  document.getElementById('tt-bar-o').style.width = otros+'%';
+  document.getElementById('tt-pct-r').textContent = d.r.toFixed(1)+'%';
+  document.getElementById('tt-pct-l').textContent = d.l.toFixed(1)+'%';
+  document.getElementById('tt-pct-o').textContent = otros.toFixed(1)+'%';
+  const note = document.getElementById('tt-note');
+  note.textContent = d.note || '';
+  note.style.display = d.note ? '' : 'none';
+  const bar = document.getElementById('tt-barrios');
+  if(d.barrios){ bar.textContent = '📍 ' + d.barrios; bar.style.display=''; }
+  else { bar.style.display='none'; }
+  tt.classList.add('visible');
+  moveTT(e);
+}
+function moveTT(e){
+  let x=e.clientX+16, y=e.clientY-20;
+  if(x+240>window.innerWidth) x=e.clientX-256;
+  tt.style.left=x+'px'; tt.style.top=y+'px';
+}
+function hideTT(){ tt.classList.remove('visible'); }
+
+function attachEvents(data, svgId){
+  const svg = document.getElementById(svgId);
+  if(!svg) return;
+  data.forEach(d=>{
+    const el = svg.querySelector(`[data-id="${d.id}"]`);
+    if(!el) return;
+    let fill;
+    if(svgId==='svg-deptos'){
+      fill = d.winner==='right'
+        ? (d.r>55?'var(--right-dark)':'var(--right)')
+        : (d.l>55?'var(--left-dark)':'var(--left)');
+    } else {
+      if(d.winner==='right'){
+        fill = d.r>50 ? '#a93226' : '#c0392b';
+      } else {
+        fill = d.l>55 ? '#0d3d6b' : (d.l>50?'#1a5276':'#1f618d');
+      }
+    }
+    el.style.fill = fill;
+    el.addEventListener('mouseenter',e=>showTT(e,d));
+    el.addEventListener('mousemove',moveTT);
+    el.addEventListener('mouseleave',hideTT);
+  });
+}
+
+function buildList(data, title){
+  document.getElementById('sidebar-title').textContent = title;
+  const list = document.getElementById('dept-list');
+  list.innerHTML = '';
+  [...data].sort((a,b)=>a.name.localeCompare(b.name)).forEach(d=>{
+    const otros = Math.max(0,100-d.r-d.l);
+    const div = document.createElement('div');
+    div.className = 'dept-item ' + (d.winner==='right'?'derecha-win':'izquierda-win');
+    div.innerHTML = `
+      <div class="dept-item-top">
+        <span class="dept-item-name">${d.name}</span>
+        <span class="dept-item-winner ${d.winner}">${d.winner==='right'?'Espriella '+d.r+'%':'Cepeda '+d.l+'%'}</span>
+      </div>
+      <div class="dept-mini-bar">
+        <div class="dept-mini-r" style="width:${d.r}%"></div>
+        <div class="dept-mini-l" style="width:${d.l}%"></div>
+        <div class="dept-mini-o" style="width:${otros}%"></div>
+      </div>
+      ${d.barrios?`<div class="nota-localidad">📍 ${d.barrios.split(',').slice(0,2).join(', ')}…</div>`:''}
+    `;
+    list.appendChild(div);
+  });
+}
+
+let currentTab = 'deptos';
+function switchTab(tab, e){
+  currentTab = tab;
+  document.querySelectorAll('.map-view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  if(e && e.target) e.target.classList.add('active');
+  if(tab==='deptos') buildList(deptos,'Resultados por Departamento');
+  else buildList(localidades,'Bogotá — Resultados por Localidad');
+}
+
+function downloadMap(){
+  const blob=new Blob([document.documentElement.outerHTML],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='mapa_electoral_colombia_2026.html';
+  a.click();
+}
+
+// Init
+attachEvents(deptos,'svg-deptos');
+attachEvents(localidades,'svg-bogota');
+buildList(deptos,'Resultados por Departamento');
+</script>
+
+
+</body></html>
